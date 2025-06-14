@@ -1,6 +1,3 @@
-Got it! Here’s the full README content you asked for, including the usage and category explanation — all in markdown:
-
-````markdown
 # DLog — Advanced Logging Utility for Unity
 
 DLog is a simple, color-coded logging utility for Unity that enhances your debugging experience by providing categorized logs directly in the Unity Editor. It also includes a dedicated editor window acting as a full console to view and filter logs easily.
@@ -125,9 +122,4 @@ public class PlayerMovement : MonoBehaviour
         DLog.DevLogWarning("Player collided with an untagged object.", this, LogCategories.Physics);
     }
 }
-```
-
-```
-
-If you want me to add badges, license info, or anything else, just say!
 ```
