@@ -1,6 +1,6 @@
-# DLog — Advanced Logging Utility for Unity
+# DLog 
 
-DLog is a simple, color-coded logging utility for Unity that enhances your debugging experience by providing categorized logs directly in the Unity Editor. It also includes a dedicated editor window acting as a full console to view and filter logs easily.
+DLog enhances the default console with a flexible, color-coded category system and a dedicated, filterable log window. With support for developer-only logs that are stripped from builds automatically, DLog helps you debug more efficiently without compromising performance.
 
 ## Features
 
