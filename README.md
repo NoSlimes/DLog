@@ -8,6 +8,33 @@ DLog is a simple, color-coded logging utility for Unity that enhances your debug
 - Developer-only logs that are excluded from builds
 - Dedicated Editor Window for viewing logs in real-time with filtering options
 
+## Installing
+
+You can add DLog to your project in two ways: via the Unity Package Manager (recommended) or by importing a `.unitypackage`.
+
+### Method 1: Unity Package Manager (Recommended)
+
+This is the cleanest method, as it keeps the package separate from your `Assets` folder and makes updates easy.
+
+1.  In the Unity Editor, open the **Package Manager** window by navigating to **Window > Package Manager**.
+2.  Click the **`+`** (plus) icon in the top-left corner of the window.
+3.  Select **"Add package from git URL..."** from the dropdown menu.
+4.  Enter the following URL and click **Add**:
+
+    ```
+    https://github.com/NoSlimes/DLog.git
+    ```
+
+5.  The package will be installed into your project. You can update it at any time from the Package Manager window.
+
+### Method 2: Traditional .unitypackage
+
+If you prefer, you can install DLog by downloading a standard `.unitypackage`.
+
+1.  Go to the **[Releases](https://github.com/NoSlimes/DLog/releases)** page of the DLog repository.
+2.  Download the latest `.unitypackage` file from the assets list.
+3.  Open your Unity project and import the package by either dragging the file into your **Assets** folder or by navigating to **Assets > Import Package > Custom Package...**.
+
 ## How to Use
 
 ### Simple Logging
