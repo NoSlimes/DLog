@@ -150,3 +150,30 @@ public class PlayerMovement : MonoBehaviour
     }
 }
 ```
+
+
+## Upgrading Existing Projects
+
+Manually converting all `Debug.Log` calls in a large project is tedious. To make adoption seamless, DLog includes an editor utility that can find and replace `Debug.Log`, `Debug.LogWarning`, and `Debug.LogError` calls automatically.
+
+### DLog Upgrader Utility
+
+The upgrader provides a safe and intuitive UI to review and apply changes, with full **Undo support**.
+
+**How to open the tool:**
+
+*   In the Unity Editor, navigate to **Tools > DLog Upgrader**.
+
+**Workflow:**
+
+1.  **Configure:** Choose whether to upgrade calls to standard `DLog.Log` methods or to the developer-only `DLog.DevLog` variants using the checkbox.
+2.  **Find Occurrences:** Click the **"Find All Debug.Log Occurrences"** button. The tool will scan your project's C# scripts (excluding "Plugins", "Editor", and other common third-party folders) and list all usages.
+3.  **Review Changes:** For each occurrence, the window will display:
+    *   The file path and line number.
+    *   The original line of code.
+    *   A preview of the upgraded line of code.
+4.  **Upgrade:** You have two options:
+    *   Click **"Upgrade This File"** to modify a single script.
+    *   Click **"Upgrade All"** to apply changes to all found files at once.
+
+> **Important:** The upgrader is integrated with Unity's Undo system. If you make a change, you can immediately revert it by pressing `Ctrl+Z` (or `Cmd+Z` on macOS).
