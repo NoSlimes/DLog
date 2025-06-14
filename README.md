@@ -63,7 +63,7 @@ public static class LogCategories
 }
 ```
 
-Of course, you can define categories anywhere you want — even inside a MonoBehaviour:
+Of course, you can define categories anywhere you want:
 
 ```csharp
 using UnityEngine;
