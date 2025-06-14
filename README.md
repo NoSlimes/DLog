@@ -35,7 +35,7 @@ You can optionally pass a Unity `Object` as context and specify a custom `DLogCa
 
 * This window displays all logs generated via `DLog` in real-time.
 
-* It can also optionally fetch logs made with Debug.Log
+* It can also optionally fetch logs added to Unity's built-in console
 
 * Logs are color-coded by category for easy identification.
 
