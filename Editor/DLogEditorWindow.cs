@@ -25,8 +25,6 @@ namespace NoSlimes.Logging
         private static DLogEditorWindow _instance;
 
         private Vector2 _logScrollPos, _stackTraceScrollPos;
-        // MODIFIED: Changed _logEntries and _selectedLogEntry from static to instance fields.
-        // This allows Unity's EditorWindow serialization to automatically save and restore them during a domain reload.
         [SerializeField] private List<LogEntry> _logEntries = new();
         [SerializeField] private LogEntry _selectedLogEntry;
 
@@ -86,7 +84,6 @@ namespace NoSlimes.Logging
             float clearButtonWidth = EditorStyles.toolbarButton.CalcSize(clearButtonContent).x + 10f;
             if (GUILayout.Button(clearButtonContent, EditorStyles.toolbarButton, GUILayout.Width(clearButtonWidth)))
             {
-                // This now correctly clears the instance fields because OnGUI is an instance method.
                 _logEntries.Clear();
                 _selectedLogEntry = null;
                 Repaint();
@@ -338,7 +335,6 @@ namespace NoSlimes.Logging
         {
             EditorApplication.delayCall += () =>
             {
-                // MODIFIED: Check for _instance and use its fields.
                 if (_instance == null) return;
 
                 if (_instance._logEntries.Count >= MAX_LOG_ENTRIES) { _instance._logEntries.RemoveAt(0); }
@@ -387,7 +383,6 @@ namespace NoSlimes.Logging
             return sb.ToString();
         }
 
-        // MODIFIED: This static method now acts on the window instance.
         private static void ClearLogs()
         {
             if (_instance == null) return;
@@ -466,7 +461,6 @@ namespace NoSlimes.Logging
 
         private List<string> GetRelevantCategories() => _logEntries.Select(log => log.Category).Distinct().ToList();
 
-        // MODIFIED: Made the LogEntry class serializable so Unity can save/load it.
         [System.Serializable]
         private class LogEntry
         {
