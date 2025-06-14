@@ -10,7 +10,7 @@ DLog is a simple, color-coded logging utility for Unity that enhances your debug
 
 ## How to Use
 
-### Logging
+### Simple Logging
 
 Use the static methods in `DLog` to log messages:
 
@@ -25,7 +25,7 @@ DLog.DevLogWarning("Developer-only warning");
 DLog.DevLogError("Developer-only error");
 ````
 
-You can optionally pass a Unity `Object` as context and specify a custom `DLogCategory` for custom color-coded categories.
+You can optionally pass a Unity `Object` as context and specify a custom `DLogCategory` for custom color-coded categories. That is the recommended approach
 
 ### Opening the Log Console Window
 
