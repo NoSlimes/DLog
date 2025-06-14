@@ -1,6 +1,6 @@
-# DLog — Advanced Logging Utility for Unity
+# DLog 
 
-DLog is a simple, color-coded logging utility for Unity that enhances your debugging experience by providing categorized logs directly in the Unity Editor. It also includes a dedicated editor window acting as a full console to view and filter logs easily.
+DLog enhances the default console with a flexible, color-coded category system and a dedicated, filterable log window. With support for developer-only logs that are stripped from builds automatically, DLog helps you debug more efficiently without compromising performance.
 
 ## Features
 
@@ -156,24 +156,21 @@ public class PlayerMovement : MonoBehaviour
 
 Manually converting all `Debug.Log` calls in a large project is tedious. To make adoption seamless, DLog includes an editor utility that can find and replace `Debug.Log`, `Debug.LogWarning`, and `Debug.LogError` calls automatically.
 
+
 ### DLog Upgrader Utility
 
-The upgrader provides a safe and intuitive UI to review and apply changes, with full **Undo support**.
+> **Warning:** This tool modifies C# files directly. These changes **cannot be undone**. It is highly recommended to use version control (like Git) or create a backup of your project before proceeding.
 
 **How to open the tool:**
 
 *   In the Unity Editor, navigate to **Tools > DLog Upgrader**.
+*   The window will also automatically pop up the first time DLog is installed in a project, encouraging an immediate upgrade.
 
 **Workflow:**
 
-1.  **Configure:** Choose whether to upgrade calls to standard `DLog.Log` methods or to the developer-only `DLog.DevLog` variants using the checkbox.
-2.  **Find Occurrences:** Click the **"Find All Debug.Log Occurrences"** button. The tool will scan your project's C# scripts (excluding "Plugins", "Editor", and other common third-party folders) and list all usages.
-3.  **Review Changes:** For each occurrence, the window will display:
-    *   The file path and line number.
-    *   The original line of code.
-    *   A preview of the upgraded line of code.
-4.  **Upgrade:** You have two options:
-    *   Click **"Upgrade This File"** to modify a single script.
-    *   Click **"Upgrade All"** to apply changes to all found files at once.
+1.  **Find Occurrences:** Click the **"Find All Debug.Log Occurrences"** button. The tool will scan your project's scripts and group the results by file, showing how many occurrences were found in each.
 
-> **Important:** The upgrader is integrated with Unity's Undo system. If you make a change, you can immediately revert it by pressing `Ctrl+Z` (or `Cmd+Z` on macOS).
+2.  **Review and Upgrade:** For each file, you can review the original lines of code that will be changed. You then have precise control over the upgrade process:
+
+    *   **Per-File:** Use the **"Upgrade to DLog"** or **"Upgrade to DevLog"** buttons within each group to convert a single script.
+    *   **Globally:** Use the **"Upgrade All to DLog"** or **"Upgrade All to DevLog"** buttons at the top of the window to convert all found files in one operation.

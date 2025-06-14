@@ -10,7 +10,7 @@ namespace NoSlimes.Logging.Editor
     public class DLogUpgrader : EditorWindow
     {
         private class LogOccurrence { public int LineNumber; public string OriginalLine; }
-        private class FileUpgradeInfo { public string FilePath; public List<LogOccurrence> Occurrences = new List<LogOccurrence>(); public bool IsUpgraded; }
+        private class FileUpgradeInfo { public string FilePath; public List<LogOccurrence> Occurrences = new List<LogOccurrence>(); public bool IsUpgraded; public bool IsSelectedForUpgrade = true; }
 
         private static readonly string[] ExcludedFolders = { "/Plugins/", "/ThirdParty/", "/External/", "/Packages/" };
 
@@ -51,7 +51,7 @@ namespace NoSlimes.Logging.Editor
             EditorGUILayout.LabelField(_statusMessage, EditorStyles.wordWrappedLabel);
             GUILayout.FlexibleSpace();
 
-            if (_searchCompleted && _filesWithOccurrences != null && _filesWithOccurrences.Values.Any(f => !f.IsUpgraded))
+            if (_searchCompleted && _filesWithOccurrences != null && _filesWithOccurrences.Values.Any(f => !f.IsUpgraded && f.IsSelectedForUpgrade))
             {
                 if (GUILayout.Button("Upgrade All to DLog", GUILayout.Width(150)))
                 {
@@ -78,7 +78,7 @@ namespace NoSlimes.Logging.Editor
         private bool ConfirmUpgradeAll()
         {
             return EditorUtility.DisplayDialog("Confirm Upgrade All",
-                "This will modify all applicable script files.\n\n" +
+                "This will modify all selected script files.\n\n" +
                 "THIS ACTION CANNOT BE UNDONE.\n\n" +
                 "Are you sure you want to proceed?",
                 "Yes, Upgrade All", "Cancel");
@@ -87,15 +87,32 @@ namespace NoSlimes.Logging.Editor
         private void DrawFileGroup(FileUpgradeInfo fileInfo)
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
             GUI.backgroundColor = fileInfo.IsUpgraded ? new Color(0.7f, 1f, 0.7f, 0.5f) : Color.white;
             EditorGUILayout.BeginVertical(new GUIStyle(GUI.skin.box) { padding = new RectOffset(5, 5, 5, 5) });
             GUI.backgroundColor = Color.white;
 
-            string countLabel = $"{fileInfo.Occurrences.Count} occurrence" + (fileInfo.Occurrences.Count == 1 ? "" : "s");
-            EditorGUILayout.ObjectField(countLabel, AssetDatabase.LoadAssetAtPath<MonoScript>(fileInfo.FilePath), typeof(MonoScript), false);
-            EditorGUILayout.SelectableLabel(fileInfo.FilePath, EditorStyles.miniLabel, GUILayout.Height(EditorGUIUtility.singleLineHeight));
+            // --- REFACTORED LAYOUT: This part is changed ---
+            using (new EditorGUI.DisabledScope(fileInfo.IsUpgraded))
+            {
+                EditorGUILayout.BeginHorizontal();
+
+                // This vertical group now contains the file info and will expand to fill available space.
+                EditorGUILayout.BeginVertical();
+                string countLabel = $"{fileInfo.Occurrences.Count} occurrence" + (fileInfo.Occurrences.Count == 1 ? "" : "s");
+                EditorGUILayout.ObjectField(countLabel, AssetDatabase.LoadAssetAtPath<MonoScript>(fileInfo.FilePath), typeof(MonoScript), false);
+                EditorGUILayout.SelectableLabel(fileInfo.FilePath, EditorStyles.miniLabel, GUILayout.Height(EditorGUIUtility.singleLineHeight));
+                EditorGUILayout.EndVertical();
+
+                // The checkbox now has a fixed width and is pushed to the right by the expanding group on the left.
+                fileInfo.IsSelectedForUpgrade = EditorGUILayout.ToggleLeft("Include", fileInfo.IsSelectedForUpgrade, GUILayout.Width(70));
+
+                EditorGUILayout.EndHorizontal();
+            }
+            // --- END OF REFACTORED LAYOUT ---
 
             EditorGUILayout.EndVertical();
+
             EditorGUI.indentLevel++;
             foreach (var occurrence in fileInfo.Occurrences)
             {
@@ -152,7 +169,9 @@ namespace NoSlimes.Logging.Editor
 
         private void UpgradeAll(bool upgradeToDev)
         {
-            var pathsToUpgrade = _filesWithOccurrences.Values.Where(f => !f.IsUpgraded).Select(f => f.FilePath).ToArray();
+            var pathsToUpgrade = _filesWithOccurrences.Values
+                .Where(f => !f.IsUpgraded && f.IsSelectedForUpgrade)
+                .Select(f => f.FilePath).ToArray();
             UpgradeFiles(pathsToUpgrade, upgradeToDev);
         }
 
