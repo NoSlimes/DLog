@@ -325,30 +325,89 @@ namespace NoSlimes.Logging
             GUI.FocusControl(null);
             LogEntry entryToSelect = item is IGrouping<string, LogEntry> group ? group.Last() : (LogEntry)item;
 
-            var newSelection = isSelected ? null : entryToSelect;
-
-            if (newSelection != _selectedLogEntry)
+            if (Event.current.clickCount == 1)
             {
-                _selectedLogEntry = newSelection;
-                if (_selectedLogEntry?.Context != null)
+                var newSelection = isSelected ? null : entryToSelect;
+                if (newSelection != _selectedLogEntry)
                 {
-                    EditorGUIUtility.PingObject(_selectedLogEntry.Context);
+                    bool wasAlreadyOpen = _selectedLogEntry != null;
+                    _selectedLogEntry = newSelection;
+
+                    if (_selectedLogEntry?.Context != null)
+                    {
+                        EditorGUIUtility.PingObject(_selectedLogEntry.Context);
+                    }
+
+                    if (!wasAlreadyOpen && _selectedLogEntry != null)
+                    {
+                        EnsureLogVisible(_selectedLogEntry);
+                    }
+
+                    Repaint();
                 }
-                Repaint();
+            }
+            else if (Event.current.clickCount == 2)
+            {
+                if (_selectedLogEntry != null && !string.IsNullOrEmpty(_selectedLogEntry.SourceFilePath))
+                {
+                    AssetDatabase.OpenAsset(AssetDatabase.LoadAssetAtPath<MonoScript>(_selectedLogEntry.SourceFilePath), _selectedLogEntry.SourceLineNumber);
+                }
+            }
+        }
+
+        private void EnsureLogVisible(LogEntry logEntry)
+        {
+            int index = -1;
+            for (int i = 0; i < _cachedVisibleEntries.Count; i++)
+            {
+                object item = _cachedVisibleEntries[i];
+                if (item is IGrouping<string, LogEntry> group && group.Contains(logEntry))
+                {
+                    index = i;
+                    break;
+                }
+                if (item is LogEntry entry && entry == logEntry)
+                {
+                    index = i;
+                    break;
+                }
             }
 
-            if (Event.current.clickCount == 2 && _selectedLogEntry != null && !string.IsNullOrEmpty(_selectedLogEntry.SourceFilePath))
+            if (index == -1) return;
+
+            float logYPos = index * LogEntryHeight + 10;
+            float topPanelHeight = _splitterPosition - EditorStyles.toolbar.fixedHeight;
+            float currentScrollPos = _logScrollPos.y;
+
+            if (logYPos < currentScrollPos)
             {
-                AssetDatabase.OpenAsset(AssetDatabase.LoadAssetAtPath<MonoScript>(_selectedLogEntry.SourceFilePath), _selectedLogEntry.SourceLineNumber);
+                _logScrollPos.y = logYPos;
+            }
+
+            else if (logYPos + LogEntryHeight > currentScrollPos + topPanelHeight)
+            {
+                _logScrollPos.y = logYPos - topPanelHeight + LogEntryHeight;
             }
         }
 
         private void DrawDetailPanel()
         {
-            GUILayout.BeginVertical();
-            _stackTraceScrollPos = EditorGUILayout.BeginScrollView(_stackTraceScrollPos, _stackTraceBoxStyle, GUILayout.ExpandHeight(true));
-            GUIStyle richLabelStyle = new GUIStyle(EditorStyles.textArea) { richText = true, wordWrap = true, alignment = TextAnchor.UpperLeft };
-            EditorGUILayout.SelectableLabel(_selectedLogEntry.StackTrace, richLabelStyle, GUILayout.ExpandHeight(true));
+            GUILayout.BeginVertical(_stackTraceBoxStyle);
+
+            _stackTraceScrollPos = EditorGUILayout.BeginScrollView(_stackTraceScrollPos, GUILayout.ExpandHeight(true));
+
+            GUIStyle richLabelStyle = new GUIStyle(EditorStyles.label)
+            {
+                richText = true,
+                wordWrap = true,
+                alignment = TextAnchor.UpperLeft
+            };
+
+            var content = new GUIContent(_selectedLogEntry.StackTrace);
+            float requiredHeight = richLabelStyle.CalcHeight(content, position.width * 0.5f - 20f);
+
+            EditorGUILayout.SelectableLabel(content.text, richLabelStyle, GUILayout.Height(requiredHeight));
+
             EditorGUILayout.EndScrollView();
             GUILayout.EndVertical();
         }
