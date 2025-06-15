@@ -32,6 +32,11 @@ namespace NoSlimes.Logging
         private string _searchText = "";
         private const string SearchControlName = "DLogSearchField";
 
+        private Rect _splitterRect;
+        private bool _isResizing;
+        [SerializeField] private float _splitterPosition = 200f;
+        private const float SplitterHeight = 5f;
+
         public const string ClearOnPlayPrefKey = "DLog.ClearOnPlay";
         public const string ClearOnBuildPrefKey = "DLog.ClearOnBuild";
         public const string ClearOnRecompilePrefKey = "DLog.ClearOnRecompile";
@@ -52,6 +57,10 @@ namespace NoSlimes.Logging
         private static readonly DLogCategory UnityErrorCategory = new DLogCategory("Unity Error", new Color(0.9f, 0.5f, 0.5f));
         private static List<DLogCategory> _allCategories;
         private GUIStyle _logBoxStyle, _logButtonStyle, _selectedLogButtonStyle, _stackTraceBoxStyle;
+        private const float LogEntryHeight = 20f;
+
+        private List<object> _cachedVisibleEntries = new();
+        private bool _isCacheDirty = true;
 
         static DLogEditorWindow()
         {
@@ -69,61 +78,102 @@ namespace NoSlimes.Logging
             titleContent = new GUIContent("DLog Console", EditorGUIUtility.IconContent("console.infoicon").image);
             if (!_prefsLoaded) { FindAllLogCategoriesInProject(); LoadPrefs(); _prefsLoaded = true; }
             if (_captureUnityLogs) { Application.logMessageReceivedThreaded -= HandleUnityLog; Application.logMessageReceivedThreaded += HandleUnityLog; }
+            MarkCacheDirty();
+
+            _splitterPosition = position.height / 2;
         }
 
         private void OnDisable() { Application.logMessageReceivedThreaded -= HandleUnityLog; }
 
-        private void OnGUI() { InitStylesIfNeeded(); HandleHotkeys(); DrawToolbar(); DrawLogAndDetailPanel(); }
+        private void OnGUI()
+        {
+            InitStylesIfNeeded();
+            HandleHotkeys();
+            DrawToolbar();
+
+            if (_isCacheDirty && Event.current.type == EventType.Layout)
+            {
+                RebuildCache();
+            }
+
+            DrawLogAndDetailPanel();
+            HandleResize();
+        }
+
+        private void DrawSplitter()
+        {
+            _splitterRect = GUILayoutUtility.GetRect(GUIContent.none, GUI.skin.horizontalSlider, GUILayout.Height(SplitterHeight));
+            EditorGUIUtility.AddCursorRect(_splitterRect, MouseCursor.ResizeVertical);
+        }
+
+        private void HandleResize()
+        {
+            if (Event.current.type == EventType.MouseDown && _splitterRect.Contains(Event.current.mousePosition))
+            {
+                _isResizing = true;
+                Event.current.Use();
+            }
+
+            if (_isResizing)
+            {
+                _splitterPosition = Event.current.mousePosition.y;
+                _splitterPosition = Mathf.Clamp(_splitterPosition, 100, position.height - 100);
+                Repaint();
+            }
+
+            if (Event.current.type == EventType.MouseUp)
+            {
+                _isResizing = false;
+            }
+        }
+
+        private void MarkCacheDirty() => _isCacheDirty = true;
+
+        private void RebuildCache()
+        {
+            var filteredLogs = _logEntries.Where(entry =>
+                (_categoryToggles.TryGetValue(entry.Category, out bool e) && e) &&
+                (string.IsNullOrEmpty(_searchText) || entry.Message.ToLowerInvariant().Contains(_searchText.ToLowerInvariant()))
+            );
+
+            if (_collapse)
+            {
+                _cachedVisibleEntries = filteredLogs.GroupBy(log => log.Message).Cast<object>().ToList();
+            }
+            else
+            {
+                _cachedVisibleEntries = filteredLogs.Cast<object>().ToList();
+            }
+            _isCacheDirty = false;
+        }
+
         private void HandleHotkeys() { if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.F && Event.current.control) { EditorGUI.FocusTextInControl(SearchControlName); Event.current.Use(); } }
 
         private void DrawToolbar()
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
-            var clearButtonContent = new GUIContent("Clear", "Clear all logs");
-            float clearButtonWidth = EditorStyles.toolbarButton.CalcSize(clearButtonContent).x + 10f;
-            if (GUILayout.Button(clearButtonContent, EditorStyles.toolbarButton, GUILayout.Width(clearButtonWidth)))
+            EditorGUI.BeginChangeCheck();
+
+            if (GUILayout.Button("Clear", EditorStyles.toolbarButton))
             {
-                _logEntries.Clear();
-                _selectedLogEntry = null;
-                Repaint();
+                ClearLogs();
             }
 
             if (EditorGUILayout.DropdownButton(GUIContent.none, FocusType.Passive, EditorStyles.toolbarDropDown, GUILayout.Width(16f)))
             {
                 GenericMenu menu = new GenericMenu();
-                menu.AddItem(new GUIContent("Clear on Play"), _clearOnPlay, () =>
-                {
-                    _clearOnPlay = !_clearOnPlay;
-                    EditorPrefs.SetBool(ClearOnPlayPrefKey, _clearOnPlay);
-                });
-                menu.AddItem(new GUIContent("Clear on Build"), _clearOnBuild, () =>
-                {
-                    _clearOnBuild = !_clearOnBuild;
-                    EditorPrefs.SetBool(ClearOnBuildPrefKey, _clearOnBuild);
-                });
-                menu.AddItem(new GUIContent("Clear on Recompile"), _clearOnRecompile, () =>
-                {
-                    _clearOnRecompile = !_clearOnRecompile;
-                    EditorPrefs.SetBool(ClearOnRecompilePrefKey, _clearOnRecompile);
-                });
-
+                menu.AddItem(new GUIContent("Clear on Play"), _clearOnPlay, () => { _clearOnPlay = !_clearOnPlay; EditorPrefs.SetBool(ClearOnPlayPrefKey, _clearOnPlay); });
+                menu.AddItem(new GUIContent("Clear on Build"), _clearOnBuild, () => { _clearOnBuild = !_clearOnBuild; EditorPrefs.SetBool(ClearOnBuildPrefKey, _clearOnBuild); });
+                menu.AddItem(new GUIContent("Clear on Recompile"), _clearOnRecompile, () => { _clearOnRecompile = !_clearOnRecompile; EditorPrefs.SetBool(ClearOnRecompilePrefKey, _clearOnRecompile); });
                 menu.ShowAsContext();
             }
 
             GUILayout.Space(5f);
 
-            var collapseContent = new GUIContent("Collapse", "Group identical log messages together");
-            float collapseWidth = EditorStyles.toolbarButton.CalcSize(collapseContent).x + 10f;
-            bool newCollapseState = GUILayout.Toggle(_collapse, collapseContent, EditorStyles.toolbarButton, GUILayout.Width(collapseWidth));
-            if (newCollapseState != _collapse)
-            {
-                _collapse = newCollapseState;
-                EditorPrefs.SetBool(CollapsePrefKey, _collapse);
-            }
+            _collapse = GUILayout.Toggle(_collapse, "Collapse", EditorStyles.toolbarButton);
 
-            var categoryFiltersContent = new GUIContent("Category Filters", "Filter logs by category");
-            if (EditorGUILayout.DropdownButton(categoryFiltersContent, FocusType.Passive, EditorStyles.toolbarDropDown))
+            if (EditorGUILayout.DropdownButton(new GUIContent("Category Filters"), FocusType.Passive, EditorStyles.toolbarDropDown))
             {
                 GenericMenu menu = new GenericMenu();
                 DrawCategorySubMenu(menu, "Relevant", GetRelevantCategories());
@@ -131,55 +181,34 @@ namespace NoSlimes.Logging
                 menu.ShowAsContext();
             }
 
-            var errorPauseContent = new GUIContent("Error Pause", "Pause the editor when an error log is received");
-            float errorPauseWidth = EditorStyles.toolbarButton.CalcSize(errorPauseContent).x + 10f;
-            bool newErrorPauseValue = GUILayout.Toggle(_errorPause, errorPauseContent, EditorStyles.toolbarButton, GUILayout.Width(errorPauseWidth));
-            if (newErrorPauseValue != _errorPause)
-            {
-                _errorPause = newErrorPauseValue;
-                EditorPrefs.SetBool(ErrorPausePrefKey, _errorPause);
-            }
+            _errorPause = GUILayout.Toggle(_errorPause, "Error Pause", EditorStyles.toolbarButton);
 
             GUILayout.FlexibleSpace();
             GUI.SetNextControlName(SearchControlName);
             _searchText = EditorGUILayout.TextField(_searchText, EditorStyles.toolbarSearchField, GUILayout.ExpandWidth(true));
 
-            var srcToggleContent = new GUIContent("Src", "Show source file info in log entries");
-            float srcToggleWidth = EditorStyles.toolbarButton.CalcSize(srcToggleContent).x + 10f;
-            bool newSrcValue = GUILayout.Toggle(_showSourceInLog, srcToggleContent, EditorStyles.toolbarButton, GUILayout.Width(srcToggleWidth));
-            if (newSrcValue != _showSourceInLog)
-            {
-                _showSourceInLog = newSrcValue;
-                EditorPrefs.SetBool(ShowSourcePrefKey, _showSourceInLog);
-            }
+            _showSourceInLog = GUILayout.Toggle(_showSourceInLog, "Src", EditorStyles.toolbarButton);
+            _focusWindowOnLog = GUILayout.Toggle(_focusWindowOnLog, "Focus", EditorStyles.toolbarButton);
 
-            var focusToggleContent = new GUIContent("Focus", "Focus this window when a new log is added");
-            float focusToggleWidth = EditorStyles.toolbarButton.CalcSize(focusToggleContent).x + 10f;
-            bool newFocusValue = GUILayout.Toggle(_focusWindowOnLog, focusToggleContent, EditorStyles.toolbarButton, GUILayout.Width(focusToggleWidth));
-            if (newFocusValue != _focusWindowOnLog)
-            {
-                _focusWindowOnLog = newFocusValue;
-                EditorPrefs.SetBool(FocusWindowPrefKey, _focusWindowOnLog);
-            }
-
-            var unityToggleContent = new GUIContent("Unity Logs", "Capture native Unity Debug.Log messages");
-            float unityToggleWidth = EditorStyles.toolbarButton.CalcSize(unityToggleContent).x + 10f;
-            bool newCaptureState = GUILayout.Toggle(_captureUnityLogs, unityToggleContent, EditorStyles.toolbarButton, GUILayout.Width(unityToggleWidth));
+            bool newCaptureState = GUILayout.Toggle(_captureUnityLogs, "Unity Logs", EditorStyles.toolbarButton);
             if (newCaptureState != _captureUnityLogs)
             {
                 _captureUnityLogs = newCaptureState;
-                EditorPrefs.SetBool(CaptureUnityPrefKey, _captureUnityLogs);
-                if (_captureUnityLogs) { Application.logMessageReceivedThreaded += HandleUnityLog; }
-                else { Application.logMessageReceivedThreaded -= HandleUnityLog; }
+                if (_captureUnityLogs) Application.logMessageReceivedThreaded += HandleUnityLog;
+                else Application.logMessageReceivedThreaded -= HandleUnityLog;
             }
 
-            var devLogsContent = new GUIContent("Dev Logs", "Enable or disable developer-only logs");
-            float devLogsToggleWidth = EditorStyles.toolbarButton.CalcSize(devLogsContent).x + 10f;
-            bool newDevLogsValue = GUILayout.Toggle(DLog.EnableDevLogs, devLogsContent, EditorStyles.toolbarButton, GUILayout.Width(devLogsToggleWidth));
-            if (newDevLogsValue != DLog.EnableDevLogs)
+            DLog.EnableDevLogs = GUILayout.Toggle(DLog.EnableDevLogs, "Dev Logs", EditorStyles.toolbarButton);
+
+            if (EditorGUI.EndChangeCheck())
             {
-                DLog.EnableDevLogs = newDevLogsValue;
+                EditorPrefs.SetBool(CollapsePrefKey, _collapse);
+                EditorPrefs.SetBool(ErrorPausePrefKey, _errorPause);
+                EditorPrefs.SetBool(ShowSourcePrefKey, _showSourceInLog);
+                EditorPrefs.SetBool(FocusWindowPrefKey, _focusWindowOnLog);
+                EditorPrefs.SetBool(CaptureUnityPrefKey, _captureUnityLogs);
                 EditorPrefs.SetBool(EnableDevLogsPrefKey, DLog.EnableDevLogs);
+                MarkCacheDirty();
             }
 
             EditorGUILayout.EndHorizontal();
@@ -187,126 +216,147 @@ namespace NoSlimes.Logging
 
         private void DrawCategorySubMenu(GenericMenu parentMenu, string subMenuTitle, List<string> categoryNames)
         {
-            System.Action<string, string> addItemToMenu = (categoryName, menuPath) =>
+            void AddItemToMenu(string categoryName, string menuPath)
             {
                 if (!_categoryToggles.ContainsKey(categoryName)) { _categoryToggles[categoryName] = true; }
                 parentMenu.AddItem(new GUIContent(menuPath), _categoryToggles[categoryName], OnCategoryToggled, categoryName);
-            };
+            }
 
             var standardDLogCategories = new[] { "Log", "Warning", "Error" };
             var unityCategories = new[] { UnityLogCategory.Name, UnityWarningCategory.Name, UnityErrorCategory.Name };
             bool hasAddedStandard = false;
-            foreach (var stdName in standardDLogCategories)
-            {
-                if (categoryNames.Contains(stdName))
-                {
-                    addItemToMenu(stdName, $"{subMenuTitle}/{stdName}");
-                    hasAddedStandard = true;
-                }
-            }
-
+            foreach (var stdName in standardDLogCategories) { if (categoryNames.Contains(stdName)) { AddItemToMenu(stdName, $"{subMenuTitle}/{stdName}"); hasAddedStandard = true; } }
             bool hasAddedUnity = false;
-            foreach (var unityName in unityCategories)
-            {
-                if (categoryNames.Contains(unityName))
-                {
-                    addItemToMenu(unityName, $"{subMenuTitle}/Unity/{unityName}");
-                    hasAddedUnity = true;
-                }
-            }
-
+            foreach (var unityName in unityCategories) { if (categoryNames.Contains(unityName)) { AddItemToMenu(unityName, $"{subMenuTitle}/Unity/{unityName}"); hasAddedUnity = true; } }
             var allSpecialCategories = standardDLogCategories.Concat(unityCategories);
             var customCategories = categoryNames.Except(allSpecialCategories).OrderBy(name => name).ToList();
-            if ((hasAddedStandard || hasAddedUnity) && customCategories.Any())
-            {
-                parentMenu.AddSeparator($"{subMenuTitle}/");
-            }
+            if ((hasAddedStandard || hasAddedUnity) && customCategories.Any()) { parentMenu.AddSeparator($"{subMenuTitle}/"); }
+            foreach (var customName in customCategories) { AddItemToMenu(customName, $"{subMenuTitle}/{customName}"); }
+        }
 
-            foreach (var customName in customCategories)
+        private void OnCategoryToggled(object userData)
+        {
+            string categoryName = (string)userData;
+            if (_categoryToggles.ContainsKey(categoryName))
             {
-                addItemToMenu(customName, $"{subMenuTitle}/{customName}");
+                _categoryToggles[categoryName] = !_categoryToggles[categoryName];
+                EditorPrefs.SetBool(CategoryTogglePrefKeyPrefix + categoryName, _categoryToggles[categoryName]);
+                MarkCacheDirty();
             }
         }
 
-        private void OnCategoryToggled(object userData) { string categoryName = (string)userData; if (_categoryToggles.ContainsKey(categoryName)) { _categoryToggles[categoryName] = !_categoryToggles[categoryName]; EditorPrefs.SetBool(CategoryTogglePrefKeyPrefix + categoryName, _categoryToggles[categoryName]); } }
-
         private void DrawLogAndDetailPanel()
         {
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.BeginVertical();
+            EditorGUILayout.BeginVertical();
+
+            float topPanelHeight = _selectedLogEntry != null ? _splitterPosition - EditorStyles.toolbar.fixedHeight : position.height - EditorStyles.toolbar.fixedHeight - 20;
+            EditorGUILayout.BeginVertical(GUILayout.Height(topPanelHeight));
             _logScrollPos = EditorGUILayout.BeginScrollView(_logScrollPos, _logBoxStyle, GUILayout.ExpandHeight(true));
-            var filteredLogs = _logEntries.Where(entry => (_categoryToggles.TryGetValue(entry.Category, out bool e) && e) && (string.IsNullOrEmpty(_searchText) || entry.Message.ToLowerInvariant().Contains(_searchText.ToLowerInvariant())));
-            if (_collapse)
+
+            int totalCount = _cachedVisibleEntries.Count;
+            float totalContentHeight = totalCount * LogEntryHeight;
+
+            GUILayout.Box(GUIContent.none, GUIStyle.none, GUILayout.Height(totalContentHeight), GUILayout.ExpandWidth(true));
+
+            Rect viewRect = GUILayoutUtility.GetLastRect();
+
+            GUI.BeginGroup(viewRect);
+
+            int firstVisibleIndex = Mathf.Max(0, (int)(_logScrollPos.y / LogEntryHeight));
+            int lastVisibleIndex = Mathf.Min(totalCount - 1, firstVisibleIndex + Mathf.CeilToInt(viewRect.height / LogEntryHeight));
+
+            for (int i = firstVisibleIndex; i <= lastVisibleIndex; i++)
             {
-                var groupedLogs = filteredLogs.GroupBy(log => log.Message);
-                foreach (var group in groupedLogs)
+                object item = _cachedVisibleEntries[i];
+                bool isSelected;
+                string displayMessage;
+
+                if (item is IGrouping<string, LogEntry> group)
                 {
-                    LogEntry representativeEntry = group.First(); int count = group.Count();
-                    string displayMessage = representativeEntry.GetFormattedMessage(_showSourceInLog); if (count > 1) { displayMessage += $" <color=grey>({count})</color>"; }
-                    bool isSelected = _selectedLogEntry != null && group.Any(log => log == _selectedLogEntry);
-                    GUIStyle style = isSelected ? _selectedLogButtonStyle : _logButtonStyle;
-                    GUILayout.Box(displayMessage, style);
-                    Rect entryRect = GUILayoutUtility.GetLastRect();
-                    if (Event.current.type == EventType.MouseDown && entryRect.Contains(Event.current.mousePosition))
-                    {
-                        GUI.FocusControl(null);
-                        if (Event.current.button == 0)
-                        {
-                            var lastEntryInGroup = group.Last(); _selectedLogEntry = isSelected ? null : lastEntryInGroup;
-                            if (!isSelected && _selectedLogEntry != null && _selectedLogEntry.Context != null) { EditorGUIUtility.PingObject(_selectedLogEntry.Context); }
-                            if (Event.current.clickCount == 2 && _selectedLogEntry != null) { AssetDatabase.OpenAsset(AssetDatabase.LoadAssetAtPath<MonoScript>(_selectedLogEntry.SourceFilePath), _selectedLogEntry.SourceLineNumber); }
-                            Event.current.Use(); Repaint();
-                        }
-                    }
+                    LogEntry representativeEntry = group.First();
+                    int count = group.Count();
+                    displayMessage = representativeEntry.GetFormattedMessage(_showSourceInLog);
+                    if (count > 1) { displayMessage += $" <color=grey>({count})</color>"; }
+                    isSelected = _selectedLogEntry != null && group.Any(log => log == _selectedLogEntry);
+                }
+                else
+                {
+                    var entry = (LogEntry)item;
+                    displayMessage = entry.GetFormattedMessage(_showSourceInLog);
+                    isSelected = entry == _selectedLogEntry;
+                }
+
+                Rect entryRect = new Rect(0, i * LogEntryHeight, viewRect.width, LogEntryHeight);
+                GUIStyle style = isSelected ? _selectedLogButtonStyle : _logButtonStyle;
+
+                if (Event.current.type == EventType.Repaint)
+                {
+                    style.Draw(entryRect, new GUIContent(displayMessage), false, false, isSelected, false);
+                }
+                else if (Event.current.type == EventType.MouseDown && entryRect.Contains(Event.current.mousePosition))
+                {
+                    HandleLogClick(item, isSelected);
+                    Event.current.Use();
                 }
             }
-            else
+
+            GUI.EndGroup();
+
+            if (_scrollToBottom && Event.current.type == EventType.Repaint)
             {
-                foreach (var entry in filteredLogs)
-                {
-                    bool isSelected = entry == _selectedLogEntry; GUIStyle style = isSelected ? _selectedLogButtonStyle : _logButtonStyle;
-                    GUILayout.Box(entry.GetFormattedMessage(_showSourceInLog), style);
-                    Rect entryRect = GUILayoutUtility.GetLastRect();
-                    if (Event.current.type == EventType.MouseDown && entryRect.Contains(Event.current.mousePosition))
-                    {
-                        GUI.FocusControl(null);
-                        if (Event.current.button == 0)
-                        {
-                            if (Event.current.clickCount == 1) { _selectedLogEntry = isSelected ? null : entry; if (!isSelected && _selectedLogEntry != null && _selectedLogEntry.Context != null) { EditorGUIUtility.PingObject(_selectedLogEntry.Context); } }
-                            else if (Event.current.clickCount == 2) { AssetDatabase.OpenAsset(AssetDatabase.LoadAssetAtPath<MonoScript>(entry.SourceFilePath), entry.SourceLineNumber); }
-                            Event.current.Use(); Repaint();
-                        }
-                    }
-                }
+                _logScrollPos.y = totalContentHeight;
+                _scrollToBottom = false;
             }
-            if (_scrollToBottom && Event.current.type == EventType.Repaint) { _logScrollPos.y = float.MaxValue; _scrollToBottom = false; }
+
             EditorGUILayout.EndScrollView();
-            GUILayout.EndVertical();
+            EditorGUILayout.EndVertical();
+
             if (_selectedLogEntry != null)
             {
-                GUILayout.BeginVertical(GUILayout.Width(position.width * 0.5f));
-                _stackTraceScrollPos = EditorGUILayout.BeginScrollView(_stackTraceScrollPos, _stackTraceBoxStyle, GUILayout.ExpandHeight(true));
-
-                GUIStyle richLabelStyle = new GUIStyle(EditorStyles.textArea)
-                {
-                    richText = true,
-                    wordWrap = true,
-                    alignment = TextAnchor.UpperLeft,
-                };
-
-                EditorGUILayout.SelectableLabel(_selectedLogEntry.StackTrace, richLabelStyle, GUILayout.ExpandHeight(true));
-
-                EditorGUILayout.EndScrollView();
-                GUILayout.EndVertical();
+                DrawSplitter();
+                DrawDetailPanel();
             }
 
-            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
+        }
+
+        private void HandleLogClick(object item, bool isSelected)
+        {
+            GUI.FocusControl(null);
+            LogEntry entryToSelect = item is IGrouping<string, LogEntry> group ? group.Last() : (LogEntry)item;
+
+            var newSelection = isSelected ? null : entryToSelect;
+
+            if (newSelection != _selectedLogEntry)
+            {
+                _selectedLogEntry = newSelection;
+                if (_selectedLogEntry?.Context != null)
+                {
+                    EditorGUIUtility.PingObject(_selectedLogEntry.Context);
+                }
+                Repaint();
+            }
+
+            if (Event.current.clickCount == 2 && _selectedLogEntry != null && !string.IsNullOrEmpty(_selectedLogEntry.SourceFilePath))
+            {
+                AssetDatabase.OpenAsset(AssetDatabase.LoadAssetAtPath<MonoScript>(_selectedLogEntry.SourceFilePath), _selectedLogEntry.SourceLineNumber);
+            }
+        }
+
+        private void DrawDetailPanel()
+        {
+            GUILayout.BeginVertical();
+            _stackTraceScrollPos = EditorGUILayout.BeginScrollView(_stackTraceScrollPos, _stackTraceBoxStyle, GUILayout.ExpandHeight(true));
+            GUIStyle richLabelStyle = new GUIStyle(EditorStyles.textArea) { richText = true, wordWrap = true, alignment = TextAnchor.UpperLeft };
+            EditorGUILayout.SelectableLabel(_selectedLogEntry.StackTrace, richLabelStyle, GUILayout.ExpandHeight(true));
+            EditorGUILayout.EndScrollView();
+            GUILayout.EndVertical();
         }
 
         private void InitStylesIfNeeded()
         {
             if (_logBoxStyle == null) { _logBoxStyle = new GUIStyle(EditorStyles.helpBox) { padding = new RectOffset(5, 5, 5, 5), normal = { background = MakeTex(1, 1, new Color(0.1f, 0.1f, 0.1f, 1f)) } }; }
-            if (_logButtonStyle == null) { _logButtonStyle = new GUIStyle(GUI.skin.label) { wordWrap = true, richText = true, fontSize = 12, alignment = TextAnchor.MiddleLeft, padding = new RectOffset(5, 5, 2, 2) }; }
+            if (_logButtonStyle == null) { _logButtonStyle = new GUIStyle(GUI.skin.label) { wordWrap = false, clipping = TextClipping.Clip, richText = true, fontSize = 12, alignment = TextAnchor.MiddleLeft, padding = new RectOffset(5, 5, 2, 2) }; }
             if (_selectedLogButtonStyle == null) { _selectedLogButtonStyle = new GUIStyle(_logButtonStyle); var selectedBg = MakeTex(1, 1, new Color(0.25f, 0.4f, 0.65f, 1f)); _selectedLogButtonStyle.normal.background = selectedBg; _selectedLogButtonStyle.hover.background = selectedBg; _selectedLogButtonStyle.active.background = selectedBg; }
             if (_stackTraceBoxStyle == null) { _stackTraceBoxStyle = new GUIStyle(EditorStyles.helpBox) { padding = new RectOffset(5, 5, 5, 5), margin = new RectOffset(0, 0, 5, 0), normal = { background = MakeTex(1, 1, new Color(0.12f, 0.12f, 0.12f, 1f)) } }; }
         }
@@ -341,19 +391,18 @@ namespace NoSlimes.Logging
                 string normalizedPath = filePath.Replace('\\', '/');
                 string projectRelativePath = normalizedPath.StartsWith(Application.dataPath) ? "Assets" + normalizedPath.Substring(Application.dataPath.Length) : normalizedPath;
                 string formattedStackTrace = FormatStackTrace(rawStackTrace);
-
                 _instance._logEntries.Add(new LogEntry(message.ToString(), category.Name, category.ColorHex, context, projectRelativePath, lineNumber, formattedStackTrace));
-
                 if (!_categoryToggles.ContainsKey(category.Name)) { _categoryToggles[category.Name] = true; }
-                _scrollToBottom = true;
-                if (_instance != null) { _instance.Repaint(); }
-                if (_focusWindowOnLog && _instance != null && !_instance.hasFocus) { _instance.Focus(); }
 
+                _instance.MarkCacheDirty();
+
+                _scrollToBottom = true;
+
+                _instance.Repaint();
+
+                if (_focusWindowOnLog && !_instance.hasFocus) { _instance.Focus(); }
                 bool isCategoryError = category == UnityErrorCategory || category == DLogCategory.Error;
-                if (_errorPause && isCategoryError && EditorApplication.isPlayingOrWillChangePlaymode)
-                {
-                    EditorApplication.isPaused = true;
-                }
+                if (_errorPause && isCategoryError && EditorApplication.isPlayingOrWillChangePlaymode) { EditorApplication.isPaused = true; }
             };
         }
 
@@ -376,32 +425,32 @@ namespace NoSlimes.Logging
                     string lineNumber = dlogMatch.Groups[3].Value;
                     if (filePath.StartsWith(Application.dataPath)) { filePath = "Assets" + filePath.Substring(Application.dataPath.Length); }
                     sb.AppendLine($"{methodPath} () (at <a href=\"{filePath}\" line=\"{lineNumber}\">{filePath}:{lineNumber}</a>)");
-
                 }
                 else { sb.AppendLine(trimmedLine); }
             }
             return sb.ToString();
         }
 
-        private static void ClearLogs()
+        private void ClearLogs()
         {
-            if (_instance == null) return;
-            _instance._logEntries.Clear();
-            _instance._selectedLogEntry = null;
-            _instance.Repaint();
+            if (_logEntries.Count == 0 && _selectedLogEntry == null) return;
+            _logEntries.Clear();
+            _selectedLogEntry = null;
+            MarkCacheDirty();
+            Repaint();
         }
 
         public static void ClearLogsIfEnabled(string prefKey)
         {
             if (EditorPrefs.GetBool(prefKey, false))
             {
-                EditorApplication.delayCall += ClearLogs;
+                _instance?.ClearLogs();
             }
         }
 
         private static void HandlePlayModeStateChange(PlayModeStateChange state)
         {
-            if (state == PlayModeStateChange.EnteredPlayMode)
+            if (state == PlayModeStateChange.ExitingEditMode || state == PlayModeStateChange.EnteredPlayMode)
             {
                 ClearLogsIfEnabled(ClearOnPlayPrefKey);
             }
@@ -418,7 +467,6 @@ namespace NoSlimes.Logging
             _focusWindowOnLog = EditorPrefs.GetBool(FocusWindowPrefKey, false);
             DLog.EnableDevLogs = EditorPrefs.GetBool(EnableDevLogsPrefKey, true);
             _errorPause = EditorPrefs.GetBool(ErrorPausePrefKey, false);
-
             if (_allCategories != null) { foreach (var category in _allCategories) { _categoryToggles[category.Name] = EditorPrefs.GetBool(CategoryTogglePrefKeyPrefix + category.Name, true); } }
         }
 
@@ -431,14 +479,14 @@ namespace NoSlimes.Logging
         {
             filePath = ""; lineNumber = 0; context = null; if (string.IsNullOrEmpty(stackTrace)) return;
             var match = Regex.Match(stackTrace, @"\(at (.+):(\d+)\)");
-            if (match.Success) { filePath = match.Groups[1].Value; lineNumber = int.Parse(match.Groups[2].Value); }
+            if (match.Success) { filePath = match.Groups[1].Value; int.TryParse(match.Groups[2].Value, out lineNumber); }
         }
 
         private static void FindAllLogCategoriesInProject()
         {
             _allCategories = new List<DLogCategory>();
             var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
-            var projectAssemblies = assemblies.Where(a => !a.FullName.StartsWith("Unity") && !a.FullName.StartsWith("System") && !a.FullName.StartsWith("Microsoft"));
+            var projectAssemblies = assemblies.Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && (a.FullName.Contains("Assembly-CSharp") || a.FullName.Contains("NoSlimes")));
             foreach (var assembly in projectAssemblies)
             {
                 try
@@ -456,6 +504,7 @@ namespace NoSlimes.Logging
                 catch (System.Exception) { /* Ignore */ }
             }
             _allCategories.AddRange(new[] { UnityLogCategory, UnityWarningCategory, UnityErrorCategory });
+            _allCategories = _allCategories.Distinct().ToList();
             foreach (var cat in _allCategories) { if (!_categoryToggles.ContainsKey(cat.Name)) { _categoryToggles[cat.Name] = true; } }
         }
 
@@ -473,12 +522,19 @@ namespace NoSlimes.Logging
             public string StackTrace;
 
             public LogEntry() { }
-
             public LogEntry(string message, string category, string colorHex, Object context, string sourceFilePath, int sourceLineNumber, string stackTrace)
+            { Message = message; Category = category; ColorHex = colorHex; Context = context; SourceFilePath = sourceFilePath; SourceLineNumber = sourceLineNumber; StackTrace = stackTrace; }
+
+            public string GetFormattedMessage(bool showSource)
             {
-                Message = message; Category = category; ColorHex = colorHex; Context = context; SourceFilePath = sourceFilePath; SourceLineNumber = sourceLineNumber; StackTrace = stackTrace;
+                string baseMessage = $"<color={ColorHex}><b>[{Category}]</b></color> {Message}";
+                if (showSource && !string.IsNullOrEmpty(SourceFilePath))
+                {
+                    try { string fileName = Path.GetFileName(SourceFilePath); return $"{baseMessage}  <color={ColorHex}><i>({fileName}:{SourceLineNumber})</i></color>"; }
+                    catch (System.ArgumentException) { return baseMessage; }
+                }
+                return baseMessage;
             }
-            public string GetFormattedMessage(bool showSource) { string baseMessage = $"<color={ColorHex}><b>[{Category}]</b></color> {Message}"; if (showSource) { string fileName = Path.GetFileName(SourceFilePath); return $"{baseMessage}  <color={ColorHex}><i>({fileName}:{SourceLineNumber})</i></color>"; } return baseMessage; }
         }
     }
 }

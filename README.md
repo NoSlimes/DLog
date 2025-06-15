@@ -159,7 +159,7 @@ Manually converting all `Debug.Log` calls in a large project is tedious. To make
 
 ### DLog Upgrader Utility
 
-> **Warning:** This tool modifies C# files directly. These changes **cannot be undone** with Ctrl+Z. It is highly recommended to use version control (like Git) or create a backup of your project before proceeding.
+> **Warning:** This tool modifies C# files directly. These changes **cannot be undone**. It is highly recommended to use version control (like Git) or create a backup of your project before proceeding.
 
 **How to open the tool:**
 
