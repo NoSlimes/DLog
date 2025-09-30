@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Runtime.CompilerServices;
-using Mono.Cecil.Cil;
 
 [assembly: InternalsVisibleTo("NoSlimes.DLog.Editor")]
 
@@ -113,4 +112,5 @@ namespace NoSlimes.Logging
         }
         #endregion
     }
+
 }
