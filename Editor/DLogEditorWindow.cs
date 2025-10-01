@@ -64,7 +64,7 @@ namespace NoSlimes.Logging
 
         static DLogEditorWindow()
         {
-            DLog.AddToEditorWindowHook = AddDLog;
+            DLogger.AddToEditorWindowHook = AddDLog;
             EditorApplication.playModeStateChanged += HandlePlayModeStateChange;
             
         }
@@ -199,7 +199,7 @@ namespace NoSlimes.Logging
                 else Application.logMessageReceivedThreaded -= HandleUnityLog;
             }
 
-            DLog.EnableDevLogs = GUILayout.Toggle(DLog.EnableDevLogs, "Dev Logs", EditorStyles.toolbarButton);
+            DLogger.EnableDevLogs = GUILayout.Toggle(DLogger.EnableDevLogs, "Dev Logs", EditorStyles.toolbarButton);
 
             if (EditorGUI.EndChangeCheck())
             {
@@ -208,7 +208,7 @@ namespace NoSlimes.Logging
                 EditorPrefs.SetBool(ShowSourcePrefKey, _showSourceInLog);
                 EditorPrefs.SetBool(FocusWindowPrefKey, _focusWindowOnLog);
                 EditorPrefs.SetBool(CaptureUnityPrefKey, _captureUnityLogs);
-                EditorPrefs.SetBool(EnableDevLogsPrefKey, DLog.EnableDevLogs);
+                EditorPrefs.SetBool(EnableDevLogsPrefKey, DLogger.EnableDevLogs);
                 MarkCacheDirty();
             }
 
@@ -525,7 +525,7 @@ namespace NoSlimes.Logging
             _showSourceInLog = EditorPrefs.GetBool(ShowSourcePrefKey, true);
             _captureUnityLogs = EditorPrefs.GetBool(CaptureUnityPrefKey, true);
             _focusWindowOnLog = EditorPrefs.GetBool(FocusWindowPrefKey, false);
-            DLog.EnableDevLogs = EditorPrefs.GetBool(EnableDevLogsPrefKey, true);
+            DLogger.EnableDevLogs = EditorPrefs.GetBool(EnableDevLogsPrefKey, true);
             _errorPause = EditorPrefs.GetBool(ErrorPausePrefKey, false);
             if (_allCategories != null) { foreach (var category in _allCategories) { _categoryToggles[category.Name] = EditorPrefs.GetBool(CategoryTogglePrefKeyPrefix + category.Name, true); } }
         }

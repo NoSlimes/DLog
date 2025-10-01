@@ -10,7 +10,7 @@ namespace NoSlimes.Logging
     /// A static logging utility that provides categorized, color-coded logs and
     /// editor-only dev logs
     /// </summary>
-    public static class DLog
+    public static class DLogger
     {
 #if UNITY_EDITOR
         /// <summary>
@@ -89,7 +89,7 @@ namespace NoSlimes.Logging
 #if UNITY_2021_2_OR_NEWER
         [HideInCallstack]
 #endif
-        public static void DevLog(object message, Object context = null, DLogCategory category = null,
+        public static void LogDev(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
 #if UNITY_EDITOR
@@ -104,7 +104,7 @@ namespace NoSlimes.Logging
 #if UNITY_2021_2_OR_NEWER
         [HideInCallstack]
 #endif
-        public static void DevLogWarning(object message, Object context = null, DLogCategory category = null,
+        public static void LogDevWarning(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
 
@@ -120,7 +120,7 @@ namespace NoSlimes.Logging
 #if UNITY_2021_2_OR_NEWER
         [HideInCallstack]
 #endif
-        public static void DevLogError(object message, Object context = null, DLogCategory category = null,
+        public static void LogDevError(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
 

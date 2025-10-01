@@ -29,7 +29,7 @@ namespace NoSlimes.Logging.Editor
         private static void ResetFirstInstallFlag()
         {
             EditorPrefs.DeleteKey(FirstTimeShownPrefKey);
-            DLog.Log("DLog Upgrader 'first install' flag has been reset. The window will pop up on the next recompile.");
+            DLogger.Log("DLog Upgrader 'first install' flag has been reset. The window will pop up on the next recompile.");
         }
     }
 }
