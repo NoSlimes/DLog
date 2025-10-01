@@ -2,7 +2,7 @@
     "name": "NoSlimes.DLog.Editor",
     "rootNamespace": "NoSlimes.Logging.Editor",
     "references": [
-        "GUID:45a47e771cbb5f942bd0ec5d27f8dad0"
+        "GUID:8c1261fcdf3568f4baa98ac98de9d08c"
     ],
     "includePlatforms": [
         "Editor"

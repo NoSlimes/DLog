@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Runtime.CompilerServices;
+using NoSlimes.Logging;
 
 [assembly: InternalsVisibleTo("NoSlimes.DLog.Editor")]
 
@@ -32,6 +33,9 @@ namespace NoSlimes.Logging
         /// <param name="category">The category of the log message.</param>
         /// <param name="sourceFilePath">The full path of the source file that contains the caller. (Automatically populated)</param>
         /// <param name="sourceLineNumber">The line number in the source file at which the method is called. (Automatically populated)</param>
+#if UNITY_2021_2_OR_NEWER
+        [HideInCallstack]
+#endif
         public static void Log(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
@@ -46,6 +50,9 @@ namespace NoSlimes.Logging
         /// <summary>
         /// Logs a warning message.
         /// </summary>
+#if UNITY_2021_2_OR_NEWER
+        [HideInCallstack]
+#endif
         public static void LogWarning(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
@@ -60,6 +67,9 @@ namespace NoSlimes.Logging
         /// <summary>
         /// Logs an error message.
         /// </summary>
+#if UNITY_2021_2_OR_NEWER
+        [HideInCallstack]
+#endif
         public static void LogError(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
@@ -76,6 +86,9 @@ namespace NoSlimes.Logging
         /// <summary>
         /// Logs a developer-only message. This will be compiled out of builds.
         /// </summary>
+#if UNITY_2021_2_OR_NEWER
+        [HideInCallstack]
+#endif
         public static void DevLog(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
@@ -88,6 +101,9 @@ namespace NoSlimes.Logging
         /// <summary>
         /// Logs a developer-only warning message. This will be compiled out of builds.
         /// </summary>
+#if UNITY_2021_2_OR_NEWER
+        [HideInCallstack]
+#endif
         public static void DevLogWarning(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
@@ -101,6 +117,9 @@ namespace NoSlimes.Logging
         /// <summary>
         /// Logs a developer-only error message. This will be compiled out of builds.
         /// </summary>
+#if UNITY_2021_2_OR_NEWER
+        [HideInCallstack]
+#endif
         public static void DevLogError(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
@@ -110,7 +129,7 @@ namespace NoSlimes.Logging
             LogError($"[DEV] {message}", context, category, sourceFilePath, sourceLineNumber);
 #endif
         }
-        #endregion
+#endregion
     }
 
 }

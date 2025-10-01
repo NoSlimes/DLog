@@ -66,6 +66,7 @@ namespace NoSlimes.Logging
         {
             DLog.AddToEditorWindowHook = AddDLog;
             EditorApplication.playModeStateChanged += HandlePlayModeStateChange;
+            
         }
 
         [DidReloadScripts]
