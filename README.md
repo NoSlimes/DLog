@@ -1,6 +1,6 @@
 # DLog 
 
-DLog enhances the default console with a flexible, color-coded category system and a dedicated, filterable log window. With support for developer-only logs that are stripped from builds automatically, DLog helps you debug more efficiently without compromising performance.
+DLog enhances Unity’s logging with color-coded categories, a filterable log window, and developer-only logs that are stripped from builds, making debugging faster and cleaner.
 
 ## Features
 
@@ -27,7 +27,7 @@ This is the cleanest method, as it keeps the package separate from your `Assets`
 
 5.  The package will be installed into your project. You can update it at any time from the Package Manager window.
 
-### Method 2: Traditional .unitypackage
+### Method 2: Traditional .unitypackage (Might be outdated)
 
 If you prefer, you can install DLog by downloading a standard `.unitypackage`.
 
@@ -42,14 +42,14 @@ If you prefer, you can install DLog by downloading a standard `.unitypackage`.
 Use the static methods in `DLog` to log messages:
 
 ```csharp
-DLog.Log("This is a standard log message");
-DLog.LogWarning("This is a warning message");
-DLog.LogError("This is an error message");
+DLogger.Log("This is a standard log message");
+DLogger.LogWarning("This is a warning message");
+DLogger.LogError("This is an error message");
 
 // Developer-only logs (only visible in the editor, not included in builds)
-DLog.DevLog("Developer-only log");
-DLog.DevLogWarning("Developer-only warning");
-DLog.DevLogError("Developer-only error");
+DLogger.LogDev("Developer-only log");
+DLogger.LogDevWarning("Developer-only warning");
+DLogger.LogDevError("Developer-only error");
 ````
 
 You can optionally pass a Unity `Object` as context and specify a custom `DLogCategory` for custom color-coded categories. That is the recommended approach
@@ -113,7 +113,7 @@ public class EnemyAI : MonoBehaviour
 {
     void ChangeState(string newState)
     {
-        DLog.Log($"State changed to '{newState}'", this, LogCategories.AI);
+        DLogger.Log($"State changed to '{newState}'", this, LogCategories.AI);
     }
 }
 
@@ -121,7 +121,7 @@ public class UIManager : MonoBehaviour
 {
     public void OnButtonClick()
     {
-        DLog.Log("Main Menu button clicked", this, LogCategories.UI);
+        DLogger.Log("Main Menu button clicked", this, LogCategories.UI);
     }
 }
 ```
@@ -130,7 +130,7 @@ public class UIManager : MonoBehaviour
 
 ## Developer-Only Logs
 
-Use `DevLog`, `DevLogWarning`, and `DevLogError` for messages you want to see only in the editor. These calls are excluded from builds automatically, so there’s no runtime cost.
+Use `LogDev`, `LogDevWarning`, and `LogDevError` for messages you want to see only in the editor. These calls are excluded from builds automatically, so there’s no runtime cost or bloat.
 
 Perfect for noisy debug info like position updates or internal state dumps:
 
@@ -141,12 +141,12 @@ public class PlayerMovement : MonoBehaviour
 {
     void Update()
     {
-        DLog.DevLog($"Player position: {transform.position}", this, LogCategories.Physics);
+        DLogger.LogDev($"Player position: {transform.position}", this, LogCategories.Physics);
     }
 
     void OnCollisionEnter(Collision collision)
     {
-        DLog.DevLogWarning("Player collided with an untagged object.", this, LogCategories.Physics);
+        DLogger.LogDevWarning("Player collided with an untagged object.", this, LogCategories.Physics);
     }
 }
 ```
@@ -172,5 +172,6 @@ Manually converting all `Debug.Log` calls in a large project is tedious. To make
 
 2.  **Review and Upgrade:** For each file, you can review the original lines of code that will be changed. You then have precise control over the upgrade process:
 
-    *   **Per-File:** Use the **"Upgrade to DLog"** or **"Upgrade to DevLog"** buttons within each group to convert a single script.
-    *   **Globally:** Use the **"Upgrade All to DLog"** or **"Upgrade All to DevLog"** buttons at the top of the window to convert all found files in one operation.
+    *   **Per-File:** Use the **"Upgrade to DLog"** or **"Upgrade to LogDev"** buttons within each group to convert a single script.
+    *   **Globally:** Use the **"Upgrade All to DLog"** or **"Upgrade All to LogDev"** buttons at the top of the window to convert all found files in one operation.
+
