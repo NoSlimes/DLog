@@ -58,7 +58,7 @@ namespace NoSlimes.Logging.Editor
         private bool _generateCategories = false;
         private bool _removeCategoriesOnDowngrade = false;
 
-        [MenuItem("Tools/DLog Upgrader")]
+        [MenuItem("Tools/DLog/DLog Upgrader")]
         public static void ShowWindow()
         {
             GetWindow<DLogUpgrader>("DLog Upgrader");
@@ -478,3 +478,4 @@ namespace NoSlimes.Logging.Editor
         }
     }
 }
+
