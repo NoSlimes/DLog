@@ -1,6 +1,6 @@
 {
   "name": "com.noslimes.dlog",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "displayName": "DLog",
   "description": "A powerful, filterable, and persistent logging console for Unity that extends the default logger.",
   "unity": "2022.3",
@@ -16,4 +16,5 @@
     "tool"
   ],
   "license": "MIT"
+
 }
