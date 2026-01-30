@@ -129,7 +129,41 @@ namespace NoSlimes.Logging
             LogError($"[DEV] {message}", context, category, sourceFilePath, sourceLineNumber);
 #endif
         }
-#endregion
+        #endregion
+
+        #region Convenience Overloads
+        // Simple overloads for just a message
+        public static void Log(object message) => Log(message, null, null);
+        public static void LogWarning(object message) => LogWarning(message, null, null);
+        public static void LogError(object message) => LogError(message, null, null);
+        public static void LogDev(object message) => LogDev(message, null, null);
+        public static void LogDevWarning(object message) => LogDevWarning(message, null, null);
+        public static void LogDevError(object message) => LogDevError(message, null, null);
+
+        // Overloads for message + category
+        public static void Log(object message, DLogCategory category) => Log(message, null, category);
+        public static void LogWarning(object message, DLogCategory category) => LogWarning(message, null, category);
+        public static void LogError(object message, DLogCategory category) => LogError(message, null, category);
+        public static void LogDev(object message, DLogCategory category) => LogDev(message, null, category);
+        public static void LogDevWarning(object message, DLogCategory category) => LogDevWarning(message, null, category);
+        public static void LogDevError(object message, DLogCategory category) => LogDevError(message, null, category);
+
+        // Overloads for message + context
+        public static void Log(object message, Object context) => Log(message, context, null);
+        public static void LogWarning(object message, Object context) => LogWarning(message, context, null);
+        public static void LogError(object message, Object context) => LogError(message, context, null);
+        public static void LogDev(object message, Object context) => LogDev(message, context, null);
+        public static void LogDevWarning(object message, Object context) => LogDevWarning(message, context, null);
+        public static void LogDevError(object message, Object context) => LogDevError(message, context, null);
+
+        // Overloads for message + context + category
+        public static void Log(object message, Object context, DLogCategory category) => Log(message, context, category);
+        public static void LogWarning(object message, Object context, DLogCategory category) => LogWarning(message, context, category);
+        public static void LogError(object message, Object context, DLogCategory category) => LogError(message, context, category);
+        public static void LogDev(object message, Object context, DLogCategory category) => LogDev(message, context, category);
+        public static void LogDevWarning(object message, Object context, DLogCategory category) => LogDevWarning(message, context, category);
+        public static void LogDevError(object message, Object context, DLogCategory category) => LogDevError(message, context, category);
+        #endregion
     }
 
 }
