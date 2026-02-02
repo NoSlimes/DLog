@@ -155,14 +155,6 @@ namespace NoSlimes.Logging
         public static void LogDev(object message, Object context) => LogDev(message, context, null);
         public static void LogDevWarning(object message, Object context) => LogDevWarning(message, context, null);
         public static void LogDevError(object message, Object context) => LogDevError(message, context, null);
-
-        // Overloads for message + context + category
-        public static void Log(object message, Object context, DLogCategory category) => Log(message, context, category);
-        public static void LogWarning(object message, Object context, DLogCategory category) => LogWarning(message, context, category);
-        public static void LogError(object message, Object context, DLogCategory category) => LogError(message, context, category);
-        public static void LogDev(object message, Object context, DLogCategory category) => LogDev(message, context, category);
-        public static void LogDevWarning(object message, Object context, DLogCategory category) => LogDevWarning(message, context, category);
-        public static void LogDevError(object message, Object context, DLogCategory category) => LogDevError(message, context, category);
         #endregion
     }
 
