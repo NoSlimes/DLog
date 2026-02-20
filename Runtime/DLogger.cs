@@ -12,12 +12,14 @@ namespace NoSlimes.Logging
     /// </summary>
     public static class DLogger
     {
-#if UNITY_EDITOR
+#if DEBUG
         /// <summary>
         /// Global toggle to enable or disable developer-only logs.
         /// </summary>
         internal static bool EnableDevLogs = true;
+#endif
 
+#if UNITY_EDITOR
         /// <summary>
         /// Hook for a custom editor window to subscribe to.
         /// Provides the message, category, and source file info for each log call.
@@ -92,7 +94,7 @@ namespace NoSlimes.Logging
         public static void LogDev(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
-#if UNITY_EDITOR
+#if DEBUG
             if (!EnableDevLogs) return;
             Log($"[DEV] {message}", context, category, sourceFilePath, sourceLineNumber);
 #endif
@@ -108,7 +110,7 @@ namespace NoSlimes.Logging
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
 
-#if UNITY_EDITOR
+#if DEBUG
             if (!EnableDevLogs) return;
             LogWarning($"[DEV] {message}", context, category, sourceFilePath, sourceLineNumber);
 #endif
@@ -124,7 +126,7 @@ namespace NoSlimes.Logging
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
 
-#if UNITY_EDITOR
+#if DEBUG
             if (!EnableDevLogs) return;
             LogError($"[DEV] {message}", context, category, sourceFilePath, sourceLineNumber);
 #endif
