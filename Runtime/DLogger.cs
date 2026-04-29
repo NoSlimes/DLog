@@ -1,6 +1,5 @@
-using UnityEngine;
 using System.Runtime.CompilerServices;
-using NoSlimes.Logging;
+using UnityEngine;
 
 [assembly: InternalsVisibleTo("NoSlimes.DLog.Editor")]
 
