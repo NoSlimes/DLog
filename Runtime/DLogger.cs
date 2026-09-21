@@ -62,7 +62,7 @@ namespace NoSlimes.Logging
             AddToEditorWindowHook?.Invoke(message, category, context, sourceFilePath, sourceLineNumber);
 #endif
 
-            Debug.LogWarning($"[{category.Name}] {message}", context);
+            Debug.LogWarning($"<color={category.ColorHex}>[{category.Name}] {message}</color>", context);
         }
 
         /// <summary>
@@ -80,16 +80,18 @@ namespace NoSlimes.Logging
             AddToEditorWindowHook?.Invoke(message, category, context, sourceFilePath, sourceLineNumber);
 #endif
 
-            Debug.LogError($"[{category.Name}] {message}", context);
+            Debug.LogError($"<color={category.ColorHex}>[{category.Name}] {message}</color>", context);
         }
 
         #region Developer-Only Logs
         /// <summary>
-        /// Logs a developer-only message. This will be compiled out of builds.
+        /// Logs a developer-only message. Calls are stripped at compile time
+        /// when DEBUG is not defined, including argument evaluation.
         /// </summary>
 #if UNITY_2021_2_OR_NEWER
         [HideInCallstack]
 #endif
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDev(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
@@ -105,6 +107,7 @@ namespace NoSlimes.Logging
 #if UNITY_2021_2_OR_NEWER
         [HideInCallstack]
 #endif
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDevWarning(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
@@ -121,6 +124,7 @@ namespace NoSlimes.Logging
 #if UNITY_2021_2_OR_NEWER
         [HideInCallstack]
 #endif
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDevError(object message, Object context = null, DLogCategory category = null,
             [CallerFilePath] string sourceFilePath = "", [CallerLineNumber] int sourceLineNumber = 0)
         {
@@ -137,24 +141,33 @@ namespace NoSlimes.Logging
         public static void Log(object message) => Log(message, null, null);
         public static void LogWarning(object message) => LogWarning(message, null, null);
         public static void LogError(object message) => LogError(message, null, null);
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDev(object message) => LogDev(message, null, null);
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDevWarning(object message) => LogDevWarning(message, null, null);
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDevError(object message) => LogDevError(message, null, null);
 
         // Overloads for message + category
         public static void Log(object message, DLogCategory category) => Log(message, null, category);
         public static void LogWarning(object message, DLogCategory category) => LogWarning(message, null, category);
         public static void LogError(object message, DLogCategory category) => LogError(message, null, category);
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDev(object message, DLogCategory category) => LogDev(message, null, category);
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDevWarning(object message, DLogCategory category) => LogDevWarning(message, null, category);
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDevError(object message, DLogCategory category) => LogDevError(message, null, category);
 
         // Overloads for message + context
         public static void Log(object message, Object context) => Log(message, context, null);
         public static void LogWarning(object message, Object context) => LogWarning(message, context, null);
         public static void LogError(object message, Object context) => LogError(message, context, null);
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDev(object message, Object context) => LogDev(message, context, null);
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDevWarning(object message, Object context) => LogDevWarning(message, context, null);
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void LogDevError(object message, Object context) => LogDevError(message, context, null);
         #endregion
     }
