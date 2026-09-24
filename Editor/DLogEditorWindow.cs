@@ -25,6 +25,8 @@ namespace NoSlimes.Logging
         private static DLogEditorWindow _instance;
 
         private Vector2 _logScrollPos, _stackTraceScrollPos;
+        private float _logViewHeight;
+        private bool _stickToBottom = true;
         [SerializeField] private List<LogEntry> _logEntries = new();
         [SerializeField] private LogEntry _selectedLogEntry;
 
@@ -51,7 +53,11 @@ namespace NoSlimes.Logging
         private static bool _showSourceInLog, _captureUnityLogs, _focusWindowOnLog, _collapse, _errorPause;
         private static bool _clearOnPlay = true, _clearOnBuild = true, _clearOnRecompile;
 
-        private static bool _isDLogMessage, _scrollToBottom, _prefsLoaded = false;
+        private static bool _scrollToBottom, _prefsLoaded = false;
+        private static readonly int _mainThreadId = System.Environment.CurrentManagedThreadId;
+        private static readonly List<(string logString, string stackTrace, LogType type)> _pendingUnityLogs = new();
+        private static readonly object _pendingLock = new();
+        private int _consecutiveFailures;
         private static readonly DLogCategory UnityLogCategory = new DLogCategory("Unity Log", new Color(0.7f, 0.7f, 0.7f));
         private static readonly DLogCategory UnityWarningCategory = new DLogCategory("Unity Warning", new Color(0.9f, 0.8f, 0.4f));
         private static readonly DLogCategory UnityErrorCategory = new DLogCategory("Unity Error", new Color(0.9f, 0.5f, 0.5f));
@@ -80,25 +86,54 @@ namespace NoSlimes.Logging
             if (!_prefsLoaded) { FindAllLogCategoriesInProject(); LoadPrefs(); _prefsLoaded = true; }
             if (_captureUnityLogs) { Application.logMessageReceivedThreaded -= HandleUnityLog; Application.logMessageReceivedThreaded += HandleUnityLog; }
             MarkCacheDirty();
+            _scrollToBottom = true;
 
             _splitterPosition = position.height / 2;
         }
 
-        private void OnDisable() { Application.logMessageReceivedThreaded -= HandleUnityLog; }
+        private void OnDisable() { Application.logMessageReceivedThreaded -= HandleUnityLog; if (_instance == this) _instance = null; }
 
         private void OnGUI()
         {
             InitStylesIfNeeded();
             HandleHotkeys();
             DrawToolbar();
+            DrainPendingUnityLogs();
 
             if (_isCacheDirty && Event.current.type == EventType.Layout)
             {
                 RebuildCache();
             }
 
-            DrawLogAndDetailPanel();
+            try
+            {
+                DrawLogAndDetailPanel();
+            }
+            catch (System.Exception ex)
+            {
+                _consecutiveFailures++;
+                _selectedLogEntry = null;
+                MarkCacheDirty();
+                if (_consecutiveFailures > 3)
+                {
+                    _consecutiveFailures = 0;
+                    _logEntries.Clear();
+                }
+                Debug.LogException(ex);
+            }
             HandleResize();
+        }
+
+        private void DrainPendingUnityLogs()
+        {
+            if (_pendingUnityLogs.Count == 0) return;
+            List<(string logString, string stackTrace, LogType type)> pending;
+            lock (_pendingLock)
+            {
+                pending = new List<(string logString, string stackTrace, LogType type)>(_pendingUnityLogs);
+                _pendingUnityLogs.Clear();
+            }
+            foreach (var log in pending) HandleUnityLogOnMainThread(log.logString, log.stackTrace, log.type);
         }
 
         private void DrawSplitter()
@@ -260,6 +295,7 @@ namespace NoSlimes.Logging
             GUILayout.Box(GUIContent.none, GUIStyle.none, GUILayout.Height(totalContentHeight), GUILayout.ExpandWidth(true));
 
             Rect viewRect = GUILayoutUtility.GetLastRect();
+            _logViewHeight = topPanelHeight;
 
             GUI.BeginGroup(viewRect);
 
@@ -307,9 +343,11 @@ namespace NoSlimes.Logging
             {
                 _logScrollPos.y = totalContentHeight;
                 _scrollToBottom = false;
+                _stickToBottom = true;
             }
 
             EditorGUILayout.EndScrollView();
+            _stickToBottom = _logScrollPos.y + _logViewHeight >= totalContentHeight - LogEntryHeight;
             EditorGUILayout.EndVertical();
 
             if (_selectedLogEntry != null)
@@ -429,13 +467,25 @@ namespace NoSlimes.Logging
 
         private static void AddDLog(object message, DLogCategory category, Object context, string filePath, int lineNumber)
         {
-            _isDLogMessage = true;
             AddLogInternal(message, category, context, filePath, lineNumber, System.Environment.StackTrace);
         }
 
         private static void HandleUnityLog(string logString, string stackTrace, LogType type)
         {
-            if (_isDLogMessage) { _isDLogMessage = false; return; }
+            if (System.Environment.CurrentManagedThreadId != _mainThreadId)
+            {
+                lock (_pendingLock)
+                {
+                    _pendingUnityLogs.Add((logString, stackTrace, type));
+                }
+                return;
+            }
+            HandleUnityLogOnMainThread(logString, stackTrace, type);
+        }
+
+        private static void HandleUnityLogOnMainThread(string logString, string stackTrace, LogType type)
+        {
+            if (!string.IsNullOrEmpty(stackTrace) && stackTrace.Contains("NoSlimes.Logging.DLogger")) return;
             var category = GetCategoryFromLogType(type);
             ParseStackTrace(stackTrace, out string filePath, out int lineNumber, out Object context);
             AddLogInternal(logString, category, context, filePath, lineNumber, stackTrace);
@@ -451,12 +501,12 @@ namespace NoSlimes.Logging
                 string normalizedPath = filePath.Replace('\\', '/');
                 string projectRelativePath = normalizedPath.StartsWith(Application.dataPath) ? "Assets" + normalizedPath.Substring(Application.dataPath.Length) : normalizedPath;
                 string formattedStackTrace = FormatStackTrace(rawStackTrace);
-                _instance._logEntries.Add(new LogEntry(message.ToString(), category.Name, category.ColorHex, context, projectRelativePath, lineNumber, formattedStackTrace));
+                _instance._logEntries.Add(new LogEntry(message?.ToString() ?? "<null>", category.Name, category.ColorHex, context, projectRelativePath, lineNumber, formattedStackTrace));
                 if (!_categoryToggles.ContainsKey(category.Name)) { _categoryToggles[category.Name] = true; }
 
                 _instance.MarkCacheDirty();
 
-                _scrollToBottom = true;
+                _scrollToBottom = _instance._stickToBottom;
 
                 _instance.Repaint();
 
