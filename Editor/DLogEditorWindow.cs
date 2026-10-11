@@ -595,8 +595,10 @@ namespace NoSlimes.Logging
         private static void FindAllLogCategoriesInProject()
         {
             _allCategories = new List<DLogCategory>();
+#pragma warning disable UAC0005
             var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
-            var projectAssemblies = assemblies.Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && (a.FullName.Contains("Assembly-CSharp") || a.FullName.Contains("NoSlimes")));
+#pragma warning restore UAC0005
+            var projectAssemblies = assemblies.Where(a => !a.IsDynamic && (a.FullName.Contains("Assembly-CSharp") || a.FullName.Contains("NoSlimes")));
             foreach (var assembly in projectAssemblies)
             {
                 try
